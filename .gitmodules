@@ -1,0 +1,3 @@
+[submodule "xgboost-predictor-java"]
+	path = xgboost-predictor-java
+	url = https://github.com/komiya-atsushi/xgboost-predictor-java.git

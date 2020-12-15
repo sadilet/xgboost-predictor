@@ -1,0 +1,22 @@
+[package]
+name = "xgboost-predictor"
+version = "0.1.0"
+authors = ["Akhlestin Ivan <i.akhlestin@rambler-co.ru>", "Sarsembaev Adilet <sarsembaev.adilet0@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+byteorder = "1.2.2"
+error-chain = "0.12.1"
+pyo3 = "0.12.4"
+numpy = "0.12"
+
+[dev-dependencies]
+assert_approx_eq = "1.1.0"
+
+[lib]
+name = "xgboost_predictor"
+crate-type = ["cdylib"]
+
+[features]
+use_f64 = []
