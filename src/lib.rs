@@ -25,7 +25,6 @@ pub mod errors {
 }
 
 mod functions;
-// pub mod fvec;
 mod gbm;
 pub mod model_reader;
 pub mod predictor;
@@ -37,34 +36,31 @@ use pyo3::prelude::*;
 use pyo3::{exceptions, wrap_pyfunction, PyErr};
 
 #[pyfunction]
-fn load_model(py: Python, model_path: &str) -> PyResult<wrapper::PredictorWrapper> {
-    let model_file = fs::File::open(model_path);
-    let mut model_file = match model_file {
+fn load_model(model_path: &str) -> PyResult<wrapper::PredictorWrapper> {
+    let mut model_file = match fs::File::open(model_path) {
         Ok(file) => file,
         Err(error) => match error.kind() {
             io::ErrorKind::NotFound => {
                 return Err(PyErr::new::<exceptions::PyFileNotFoundError, _>(format!(
-                    "File not found: {}",
+                    "File not found: {}.",
                     model_path
                 )))
             }
             _ => {
-                return Err(PyErr::new::<exceptions::PyOSError, _>(format!(
-                    "Unexpected: {}",
-                    error
-                )))
+                return Err(PyErr::new::<exceptions::PyOSError, _>(format!("Unexpected error, when open file: {}.", error)))
             }
         },
     };
-    let predictor = predictor::Predictor::read_from::<fs::File>(&mut model_file);
-    match predictor {
-        Err(error) => Err(PyErr::new::<exceptions::PyOSError, _>(format!(
-            "Unexpected: {}",
-            error
-        ))),
-        Ok(_) => Ok(wrapper::PredictorWrapper {
-            predictor: predictor.unwrap(),
-        }),
+    match predictor::Predictor::read_from::<fs::File>(&mut model_file) {
+        Ok(predictor) => Ok(wrapper::PredictorWrapper {predictor: predictor}),
+        Err(error) => match error.kind() {
+            errors::ErrorKind::UnsupportedModelType(message) | errors::ErrorKind::UnsupportedObjFunctionType(message) => {
+                Err(PyErr::new::<exceptions::PyValueError, _>(message.clone()))
+            }
+            _ => {
+                Err(PyErr::new::<exceptions::PyValueError, _>(format!("Unexpected error, when initializing model: {}.", error)))
+            }
+        },
     }
 }
 

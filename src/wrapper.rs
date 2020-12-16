@@ -5,34 +5,26 @@ use pyo3::{exceptions, PyErr};
 
 use crate::predictor::Predictor;
 
-
 fn check_input_1d(predictor: &Predictor, data: &ArrayView1<'_, f32>) -> PyResult<()> {
     let model_num_features = predictor.model_num_feature();
     let data_num_features = data.shape()[0];
     if model_num_features != data_num_features {
-        return Err(PyErr::new::<exceptions::PyValueError, _>(
-            format!(
-                "Num of features is not equal to model's features count: {} != {}",
-                data_num_features,
-                model_num_features,
-            )
-        ));
+        return Err(PyErr::new::<exceptions::PyValueError, _>(format!(
+            "Num of features is not equal to model's features count: {} != {}.",
+            data_num_features, model_num_features,
+        )));
     }
     Ok(())
 }
-
 
 fn check_input_2d(predictor: &Predictor, data: &ArrayView2<'_, f32>) -> PyResult<()> {
     let model_num_features = predictor.model_num_feature();
     let data_num_features = data.shape()[1];
     if model_num_features != data_num_features {
-        return Err(PyErr::new::<exceptions::PyValueError, _>(
-            format!(
-                "Num of features is not equal to model's features count: {} != {}",
-                data_num_features,
-                model_num_features,
-            )
-        ));
+        return Err(PyErr::new::<exceptions::PyValueError, _>(format!(
+            "Num of features is not equal to model's features count: {} != {}.",
+            data_num_features, model_num_features,
+        )));
     }
     Ok(())
 }
@@ -72,7 +64,9 @@ impl PredictorWrapper {
     ) -> PyResult<f32> {
         let data_array = data.as_array();
         check_input_1d(&self.predictor, &data_array)?;
-        Ok(self.predictor.predict_single(data_array, margin, ntree_limit))
+        Ok(self
+            .predictor
+            .predict_single(data_array, margin, ntree_limit))
     }
 
     // #[args(ntree_limit = "0")]

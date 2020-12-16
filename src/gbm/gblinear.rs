@@ -1,5 +1,5 @@
-use ndarray::{ArrayView1, ArrayView2};
 use itertools::izip;
+use ndarray::{ArrayView1, ArrayView2};
 
 use crate::errors::*;
 use crate::gbm::grad_booster::GradBooster;
@@ -109,9 +109,6 @@ impl GradBooster for GBLinear {
     // }
 
     fn predict_many(&self, feats: ArrayView2<'_, f32>, ntree_limit: usize) -> Vec<Vec<f32>> {
-        izip!(
-            (0..self.mparam.num_output_group).map(|gid| self.pred_many(feats, gid))
-        )
-        .collect()
+        izip!((0..self.mparam.num_output_group).map(|gid| self.pred_many(feats, gid))).collect()
     }
 }

@@ -1,4 +1,4 @@
-use ndarray::{ArrayView1,ArrayView2};
+use ndarray::{ArrayView1, ArrayView2};
 
 use crate::errors::*;
 use crate::gbm::gblinear::GBLinear;

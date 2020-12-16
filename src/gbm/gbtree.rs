@@ -137,7 +137,6 @@ impl GBTree {
         }
     }
 
-
     fn pred_as_dart(
         &self,
         feat: ArrayView1<'_, f32>,
@@ -152,8 +151,9 @@ impl GBTree {
         } else {
             cmp::min(ntree_limit, trees.len())
         };
-        (0..treeleft).map(|i| weight_drop[i] * trees[i].get_leaf_value(feat, root_index)).sum()
-       
+        (0..treeleft)
+            .map(|i| weight_drop[i] * trees[i].get_leaf_value(feat, root_index))
+            .sum()
     }
 
     fn pred_as_gbtree(
@@ -169,9 +169,10 @@ impl GBTree {
         } else {
             cmp::min(ntree_limit, trees.len())
         };
-        (0..treeleft).map(|i| trees[i].get_leaf_value(feat, root_index)).sum()
+        (0..treeleft)
+            .map(|i| trees[i].get_leaf_value(feat, root_index))
+            .sum()
     }
-
 
     fn pred_many(
         &self,
@@ -268,9 +269,12 @@ impl GradBooster for GBTree {
     // }
 
     fn predict_many(&self, feats: ArrayView2<f32>, ntree_limit: usize) -> Vec<Vec<f32>> {
-        izip!(
-            (0..self.mparam.num_output_group).map(|gid| self.pred_many(feats, gid as usize, 0, ntree_limit))
-        )
+        izip!((0..self.mparam.num_output_group).map(|gid| self.pred_many(
+            feats,
+            gid as usize,
+            0,
+            ntree_limit
+        )))
         .collect()
     }
 }
