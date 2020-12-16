@@ -1,8 +1,8 @@
 use crate::errors::*;
 use crate::functions::{get_classify_func_type, get_classify_function, ObjFunction};
-// use crate::fvec::FVec;
 use crate::gbm::grad_booster::GradBooster;
 use crate::model_reader::ModelReader;
+use ndarray::{ArrayView1, ArrayView2};
 
 use byteorder::{ByteOrder, LE};
 
@@ -32,6 +32,10 @@ impl ModelParam {
             num_class,
             saved_with_pbuffer,
         });
+    }
+
+    fn num_feature(&self) -> usize {
+        self.num_feature
     }
 }
 
@@ -87,16 +91,16 @@ impl Predictor {
         });
     }
 
+    pub fn model_num_feature(&self) -> usize {
+        self.mparam.num_feature()
+    }
+
     // fn predict_raw(&self, feat: &F, ntree_limit: usize) -> Vec<f32> {
     //     let mut preds = self.gbm.predict(feat, ntree_limit);
     //     for i in 0..preds.len() {
     //         preds[i] += self.mparam.base_score as f32;
     //     }
     //     preds
-    // }
-
-    // fn predict_single_raw(&self, feat: &F, ntree_limit: usize) -> f32 {
-    //     self.gbm.predict_single(feat, ntree_limit) + self.mparam.base_score as f32
     // }
 
     // /// Generates predictions for given feature vector
@@ -110,32 +114,50 @@ impl Predictor {
     //     };
     // }
 
+    fn predict_single_raw(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> f32 {
+        self.gbm.predict_single(feat, ntree_limit) + self.mparam.base_score as f32
+    }
+
     /// Generates a prediction for given feature vector
-    // pub fn predict_single(&self, feat: &F, output_margin: bool, ntree_limit: usize) -> f32 {
-    //     let pred = self.predict_single_raw(feat, ntree_limit);
-    //     return if !output_margin {
-    //         (self.obj_func.scalar)(pred)
-    //     } else {
-    //         pred
-    //     };
-    // }
+    pub fn predict_single(&self, feat: ArrayView1<'_, f32>, output_margin: bool, ntree_limit: usize) -> f32 {
+        let pred = self.predict_single_raw(feat, ntree_limit);
+        return if !output_margin {
+            (self.obj_func.scalar)(pred)
+        } else {
+            pred
+        };
+    }
 
     // /// Predicts leaf index of each tree.
     // pub fn predict_leaf(&self, feat: &F, ntree_limit: usize) -> Vec<usize> {
     //     self.gbm.predict_leaf(feat, ntree_limit)
     // }
 
+    fn predict_many_raw(&self, feats: ArrayView2<'_, f32>, ntree_limit: usize) -> Vec<Vec<f32>> {
+        let mut preds = self.gbm.predict_many(feats, ntree_limit);
+        for rid in 0..preds.len() {
+            for pid in 0..preds[rid].len() {
+                preds[rid][pid] += self.mparam.base_score as f32;
+            }
+        }
+        preds
+    }
+
     pub fn predict_many(
         &self,
-        feats: &[f32],
-        row_length: usize,
+        feats: ArrayView2<'_, f32>,
         output_margin: bool,
         ntree_limit: usize,
     ) -> Vec<Vec<f32>> {
-        self.gbm
-            .predict_many(feats, row_length, ntree_limit)
-            .into_iter()
-            .map(|row| (self.obj_func.vector)(&row))
-            .collect()
+        let preds = self.predict_many_raw(feats, ntree_limit);
+
+        if !output_margin {
+            preds
+                .into_iter()
+                .map(|row| (self.obj_func.vector)(&row))
+                .collect()
+        } else {
+            preds
+        }
     }
 }

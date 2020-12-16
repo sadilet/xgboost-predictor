@@ -1,4 +1,4 @@
 mod gblinear;
-// mod gbtree;
+mod gbtree;
 pub mod grad_booster;
-// mod regtree;
+mod regtree;

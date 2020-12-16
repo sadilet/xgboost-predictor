@@ -1,7 +1,9 @@
-use crate::errors::*;
-use crate::fvec::FVec;
-use crate::model_reader::ModelReader;
 use std::f32;
+
+use ndarray::ArrayView1;
+
+use crate::errors::*;
+use crate::model_reader::ModelReader;
 
 #[derive(Clone, Copy)]
 struct Param {
@@ -110,7 +112,7 @@ impl Node {
         });
     }
 
-    fn next<F: FVec>(&self, feat: &F) -> Option<usize> {
+    fn next(&self, feat: ArrayView1<f32>) -> Option<usize> {
         return match self.leaf_or_split {
             LeafOrSplit::LeafValue(_) => None,
             LeafOrSplit::Split {
@@ -119,10 +121,13 @@ impl Node {
                 split_cond,
                 default_next,
                 split_index,
-            } => match feat.fvalue(split_index as usize, 1) {
+            } => match feat.get(split_index as usize) {
                 None => return Some(default_next as usize),
                 Some(fvalue) => {
-                    if fvalue < split_cond {
+                    if *fvalue == 0f32 {
+                        return Some(default_next as usize);
+                    }
+                    if *fvalue < split_cond {
                         Some(cleft as usize)
                     } else {
                         Some(cright as usize)
@@ -179,7 +184,7 @@ impl RegTree {
         });
     }
 
-    pub fn get_leaf_index<F: FVec>(&self, feat: &F, root_id: usize) -> usize {
+    pub fn get_leaf_index(&self, feat: ArrayView1<f32>, root_id: usize) -> usize {
         let mut pid = root_id;
         let mut node = self.nodes[pid];
         loop {
@@ -193,7 +198,7 @@ impl RegTree {
         }
     }
 
-    pub fn get_leaf_value<F: FVec>(&self, feat: &F, root_id: usize) -> f32 {
+    pub fn get_leaf_value(&self, feat: ArrayView1<f32>, root_id: usize) -> f32 {
         let leaf_node = self.nodes[self.get_leaf_index(feat, root_id)];
         return match leaf_node.leaf_or_split {
             LeafOrSplit::LeafValue(leaf_value) => leaf_value,

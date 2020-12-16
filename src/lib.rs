@@ -31,10 +31,10 @@ pub mod model_reader;
 pub mod predictor;
 mod wrapper;
 
-use pyo3::prelude::*;
-use pyo3::{create_exception, exceptions, wrap_pyfunction, PyErr};
-
 use std::{fs, io};
+
+use pyo3::prelude::*;
+use pyo3::{exceptions, wrap_pyfunction, PyErr};
 
 #[pyfunction]
 fn load_model(py: Python, model_path: &str) -> PyResult<wrapper::PredictorWrapper> {

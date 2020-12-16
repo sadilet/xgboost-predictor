@@ -1,6 +1,8 @@
-use crate::errors::*;
-use byteorder::{ReadBytesExt, BE, LE};
 use std::io::Read;
+
+use byteorder::{ReadBytesExt, BE, LE};
+
+use crate::errors::*;
 
 pub trait ModelReader: ReadBytesExt {
     #[inline]

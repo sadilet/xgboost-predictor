@@ -1,7 +1,9 @@
 use std::cmp;
 
+use itertools::izip;
+use ndarray::{ArrayView1, ArrayView2};
+
 use crate::errors::*;
-use crate::fvec::FVec;
 use crate::gbm::grad_booster::GradBooster;
 use crate::gbm::regtree::RegTree;
 use crate::model_reader::ModelReader;
@@ -30,6 +32,7 @@ impl ModelParam {
             reader.read_i32_le()?,
             reader.read_i32_le()?,
         );
+        println!("num feature {:?}", num_feature);
         // read padding
         reader.read_i32_le()?;
         let num_pbuffer = reader.read_i64_le()? as usize;
@@ -119,9 +122,9 @@ impl GBTree {
         })
     }
 
-    fn pred<F: FVec>(
+    fn pred(
         &self,
-        feat: &F,
+        feat: ArrayView1<'_, f32>,
         bst_group: usize,
         root_index: usize,
         ntree_limit: usize,
@@ -134,9 +137,10 @@ impl GBTree {
         }
     }
 
-    fn pred_as_dart<F: FVec>(
+
+    fn pred_as_dart(
         &self,
-        feat: &F,
+        feat: ArrayView1<'_, f32>,
         weight_drop: &Vec<f32>,
         bst_group: usize,
         root_index: usize,
@@ -148,14 +152,13 @@ impl GBTree {
         } else {
             cmp::min(ntree_limit, trees.len())
         };
-        (0..treeleft)
-            .map(|i| weight_drop[i] * trees[i].get_leaf_value(feat, root_index))
-            .sum()
+        (0..treeleft).map(|i| weight_drop[i] * trees[i].get_leaf_value(feat, root_index)).sum()
+       
     }
 
-    fn pred_as_gbtree<F: FVec>(
+    fn pred_as_gbtree(
         &self,
-        feat: &F,
+        feat: ArrayView1<'_, f32>,
         bst_group: usize,
         root_index: usize,
         ntree_limit: usize,
@@ -166,42 +169,108 @@ impl GBTree {
         } else {
             cmp::min(ntree_limit, trees.len())
         };
-        (0..treeleft)
-            .map(|i| trees[i].get_leaf_value(feat, root_index))
-            .sum()
+        (0..treeleft).map(|i| trees[i].get_leaf_value(feat, root_index)).sum()
     }
 
-    fn pred_path<F: FVec>(&self, feat: &F, root_index: usize, ntree_limit: usize) -> Vec<usize> {
-        let treeleft = if ntree_limit == 0 {
-            self.trees.len()
-        } else {
-            ntree_limit
-        };
-        (0..treeleft)
-            .map(|i| self.trees[i].get_leaf_index(feat, root_index))
-            .collect()
+
+    fn pred_many(
+        &self,
+        feats: ArrayView2<'_, f32>,
+        bst_group: usize,
+        root_index: usize,
+        ntree_limit: usize,
+    ) -> Vec<f32> {
+        match &self.weight_drop {
+            None => self.pred_many_as_gbtree(feats, bst_group, root_index, ntree_limit),
+            Some(weight_drop) => {
+                self.pred_many_as_dart(feats, &weight_drop, bst_group, root_index, ntree_limit)
+            }
+        }
     }
+
+    fn pred_many_as_dart(
+        &self,
+        feats: ArrayView2<'_, f32>,
+        weight_drop: &Vec<f32>,
+        bst_group: usize,
+        root_index: usize,
+        ntree_limit: usize,
+    ) -> Vec<f32> {
+        let trees = self.group_trees[bst_group].clone();
+        let treeleft = if ntree_limit == 0 {
+            trees.len()
+        } else {
+            cmp::min(ntree_limit, trees.len())
+        };
+        let mut result: Vec<f32> = vec![];
+        for feat in 0..feats.rows() {
+            result.push(
+                (0..treeleft)
+                    .map(|i| weight_drop[i] * trees[i].get_leaf_value(feats.row(feat), root_index))
+                    .sum(),
+            )
+        }
+        result
+    }
+
+    fn pred_many_as_gbtree(
+        &self,
+        feats: ArrayView2<'_, f32>,
+        bst_group: usize,
+        root_index: usize,
+        ntree_limit: usize,
+    ) -> Vec<f32> {
+        let trees = self.group_trees[bst_group].clone();
+        let treeleft = if ntree_limit == 0 {
+            trees.len()
+        } else {
+            cmp::min(ntree_limit, trees.len())
+        };
+        let mut result: Vec<f32> = vec![];
+        for feat in 0..feats.rows() {
+            result.push(
+                (0..treeleft)
+                    .map(|i| trees[i].get_leaf_value(feats.row(feat), root_index))
+                    .sum(),
+            )
+        }
+        result
+    }
+
+    // fn pred_path(&self, feat: ArrayView2<f32>, root_index: usize, ntree_limit: usize) -> Vec<usize> {
+    //     let treeleft = if ntree_limit == 0 {
+    //         self.trees.len()
+    //     } else {
+    //         ntree_limit
+    //     };
+    //     (0..treeleft)
+    //         .map(|i| self.trees[i].get_leaf_index(feat, root_index))
+    //         .collect()
+    // }
 }
 
-impl<F: FVec> GradBooster<F> for GBTree {
-    fn predict(&self, feat: &F, ntree_limit: usize) -> Vec<f32> {
-        (0..self.mparam.num_output_group)
-            .map(|gid| self.pred(feat, gid as usize, 0, ntree_limit))
-            .collect()
-    }
+impl GradBooster for GBTree {
+    // fn predict(&self, feat: &F, ntree_limit: usize) -> Vec<f32> {
+    //     (0..self.mparam.num_output_group)
+    //         .map(|gid| self.pred(feat, gid as usize, 0, ntree_limit))
+    //         .collect()
+    // }
 
-    fn predict_single(&self, feat: &F, ntree_limit: usize) -> f32 {
+    fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> f32 {
         if self.mparam.num_output_group != 1 {
             panic!("Can't invoke predict_single() because this model outputs multiple values");
         }
         self.pred(feat, 0, 0, ntree_limit)
     }
 
-    fn predict_leaf(&self, feat: &F, ntree_limit: usize) -> Vec<usize> {
-        self.pred_path(feat, 0, ntree_limit)
-    }
+    // fn predict_leaf(&self, feat: &F, ntree_limit: usize) -> Vec<usize> {
+    //     self.pred_path(feat, 0, ntree_limit)
+    // }
 
-    fn predict_many(&self, feats: &F, ntree_limit: usize) -> Vec<Vec<f32>> {
-        vec![vec![1 as f32]]
+    fn predict_many(&self, feats: ArrayView2<f32>, ntree_limit: usize) -> Vec<Vec<f32>> {
+        izip!(
+            (0..self.mparam.num_output_group).map(|gid| self.pred_many(feats, gid as usize, 0, ntree_limit))
+        )
+        .collect()
     }
 }
