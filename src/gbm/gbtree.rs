@@ -257,24 +257,32 @@ impl GradBooster for GBTree {
     //         .collect()
     // }
 
-    fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> f32 {
+    fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32> {
         if self.mparam.num_output_group != 1 {
-            panic!("Can't invoke predict_single() because this model outputs multiple values");
+            return Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
+                String::from("predict_single"),
+                format!(
+                    " Detail: {} output group is not equal to 1",
+                    self.mparam.num_output_group
+                ),
+            )));
         }
-        self.pred(feat, 0, 0, ntree_limit)
+        Ok(self.pred(feat, 0, 0, ntree_limit))
     }
 
     // fn predict_leaf(&self, feat: &F, ntree_limit: usize) -> Vec<usize> {
     //     self.pred_path(feat, 0, ntree_limit)
     // }
 
-    fn predict_many(&self, feats: ArrayView2<f32>, ntree_limit: usize) -> Vec<Vec<f32>> {
-        izip!((0..self.mparam.num_output_group).map(|gid| self.pred_many(
-            feats,
-            gid as usize,
-            0,
-            ntree_limit
-        )))
-        .collect()
+    fn predict_many(&self, feats: ArrayView2<f32>, ntree_limit: usize) -> Result<Vec<Vec<f32>>> {
+        Ok(
+            izip!((0..self.mparam.num_output_group).map(|gid| self.pred_many(
+                feats,
+                gid as usize,
+                0,
+                ntree_limit
+            )))
+            .collect(),
+        )
     }
 }

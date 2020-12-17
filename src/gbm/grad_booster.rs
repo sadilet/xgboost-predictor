@@ -10,10 +10,11 @@ pub trait GradBooster {
     /// Generates predictions for given feature vector
     // fn predict(&self, feat: &F, ntree_limit: usize) -> Vec<f32>;
     /// Generates a prediction for given feature vector
-    fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> f32;
+    fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32>;
     // /// Predicts the leaf index of each tree. This is only valid in gbtree predictor
     // fn predict_leaf(&self, feat: &F, ntree_limit: usize) -> Vec<usize>;
-    fn predict_many(&self, feats: ArrayView2<'_, f32>, ntree_limit: usize) -> Vec<Vec<f32>>;
+    fn predict_many(&self, feats: ArrayView2<'_, f32>, ntree_limit: usize)
+        -> Result<Vec<Vec<f32>>>;
 }
 
 pub fn load_grad_booster<T: ModelReader>(

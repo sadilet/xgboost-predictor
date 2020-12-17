@@ -20,6 +20,10 @@ pub mod errors {
                 description("Unsupported object function type")
                 display("Unsupported object function type: '{}'", t)
             }
+            UnsupportedPredictionMethod(m: String, d: String) {
+                description("Unsupported predict method")
+                display("That model does not support: '{}'.{}", m, d)
+            }
         }
     }
 }
@@ -47,19 +51,26 @@ fn load_model(model_path: &str) -> PyResult<wrapper::PredictorWrapper> {
                 )))
             }
             _ => {
-                return Err(PyErr::new::<exceptions::PyOSError, _>(format!("Unexpected error, when open file: {}.", error)))
+                return Err(PyErr::new::<exceptions::PyOSError, _>(format!(
+                    "Unexpected error, when open file: {}.",
+                    error
+                )))
             }
         },
     };
     match predictor::Predictor::read_from::<fs::File>(&mut model_file) {
-        Ok(predictor) => Ok(wrapper::PredictorWrapper {predictor: predictor}),
+        Ok(predictor) => Ok(wrapper::PredictorWrapper {
+            predictor: predictor,
+        }),
         Err(error) => match error.kind() {
-            errors::ErrorKind::UnsupportedModelType(message) | errors::ErrorKind::UnsupportedObjFunctionType(message) => {
+            errors::ErrorKind::UnsupportedModelType(message)
+            | errors::ErrorKind::UnsupportedObjFunctionType(message) => {
                 Err(PyErr::new::<exceptions::PyValueError, _>(message.clone()))
             }
-            _ => {
-                Err(PyErr::new::<exceptions::PyValueError, _>(format!("Unexpected error, when initializing model: {}.", error)))
-            }
+            _ => Err(PyErr::new::<exceptions::PyValueError, _>(format!(
+                "Unexpected error, when initializing model: {}.",
+                error
+            ))),
         },
     }
 }

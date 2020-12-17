@@ -116,8 +116,8 @@ impl Predictor {
     //     };
     // }
 
-    fn predict_single_raw(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> f32 {
-        self.gbm.predict_single(feat, ntree_limit) + self.mparam.base_score as f32
+    fn predict_single_raw(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32> {
+        Ok(self.gbm.predict_single(feat, ntree_limit)? + self.mparam.base_score as f32)
     }
 
     /// Generates a prediction for given feature vector
@@ -126,12 +126,12 @@ impl Predictor {
         feat: ArrayView1<'_, f32>,
         output_margin: bool,
         ntree_limit: usize,
-    ) -> f32 {
-        let pred = self.predict_single_raw(feat, ntree_limit);
+    ) -> Result<f32> {
+        let pred = self.predict_single_raw(feat, ntree_limit)?;
         return if !output_margin {
-            (self.obj_func.scalar)(pred)
+            Ok((self.obj_func.scalar)(pred))
         } else {
-            pred
+            Ok(pred)
         };
     }
 
@@ -140,14 +140,18 @@ impl Predictor {
     //     self.gbm.predict_leaf(feat, ntree_limit)
     // }
 
-    fn predict_many_raw(&self, feats: ArrayView2<'_, f32>, ntree_limit: usize) -> Vec<Vec<f32>> {
-        let mut preds = self.gbm.predict_many(feats, ntree_limit);
+    fn predict_many_raw(
+        &self,
+        feats: ArrayView2<'_, f32>,
+        ntree_limit: usize,
+    ) -> Result<Vec<Vec<f32>>> {
+        let mut preds = self.gbm.predict_many(feats, ntree_limit)?;
         for rid in 0..preds.len() {
             for pid in 0..preds[rid].len() {
                 preds[rid][pid] += self.mparam.base_score as f32;
             }
         }
-        preds
+        Ok(preds)
     }
 
     pub fn predict_many(
@@ -155,16 +159,16 @@ impl Predictor {
         feats: ArrayView2<'_, f32>,
         output_margin: bool,
         ntree_limit: usize,
-    ) -> Vec<Vec<f32>> {
-        let preds = self.predict_many_raw(feats, ntree_limit);
+    ) -> Result<Vec<Vec<f32>>> {
+        let preds = self.predict_many_raw(feats, ntree_limit)?;
 
         if !output_margin {
-            preds
+            Ok(preds
                 .into_iter()
                 .map(|row| (self.obj_func.vector)(&row))
-                .collect()
+                .collect())
         } else {
-            preds
+            Ok(preds)
         }
     }
 }
