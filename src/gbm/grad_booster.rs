@@ -8,11 +8,12 @@ use crate::model_reader::ModelReader;
 /// Interface of gradient boosting model
 pub trait GradBooster {
     /// Generates predictions for given feature vector
-    // fn predict(&self, feat: &F, ntree_limit: usize) -> Vec<f32>;
+    fn predict(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>>;
     /// Generates a prediction for given feature vector
     fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32>;
-    // /// Predicts the leaf index of each tree. This is only valid in gbtree predictor
-    // fn predict_leaf(&self, feat: &F, ntree_limit: usize) -> Vec<usize>;
+    /// Predicts the leaf index of each tree. This is only valid in gbtree predictor
+    fn predict_leaf(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<usize>>;
+    /// Generates predictions for given vectors of features
     fn predict_many(&self, feats: ArrayView2<'_, f32>, ntree_limit: usize)
         -> Result<Vec<Vec<f32>>>;
 }

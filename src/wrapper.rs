@@ -3,6 +3,7 @@ use numpy::{PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 use pyo3::{exceptions, PyErr};
 
+use crate::errors::*;
 use crate::predictor::Predictor;
 
 fn check_input_1d(predictor: &Predictor, data: &ArrayView1<'_, f32>) -> PyResult<()> {
@@ -52,7 +53,12 @@ impl PredictorWrapper {
     ) -> PyResult<Vec<Vec<f32>>> {
         let data_array = data.as_array();
         check_input_2d(&self.predictor, &data_array)?;
-        Ok(self.predictor.predict_many(data_array, margin, ntree_limit))
+        match self.predictor.predict_many(data_array, margin, ntree_limit) {
+            Ok(preds) => Ok(preds),
+            Err(error) => match error.kind() {
+                _ => Err(PyErr::new::<exceptions::PyValueError, _>("")),
+            },
+        }
     }
 
     #[args(ntree_limit = "0", margin = "false")]
@@ -64,9 +70,15 @@ impl PredictorWrapper {
     ) -> PyResult<f32> {
         let data_array = data.as_array();
         check_input_1d(&self.predictor, &data_array)?;
-        Ok(self
+        match self
             .predictor
-            .predict_single(data_array, margin, ntree_limit))
+            .predict_single(data_array, margin, ntree_limit)
+        {
+            Ok(pred) => Ok(pred),
+            Err(error) => match error.kind() {
+                _ => Err(PyErr::new::<exceptions::PyValueError, _>("")),
+            },
+        }
     }
 
     // #[args(ntree_limit = "0")]

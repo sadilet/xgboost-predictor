@@ -24,6 +24,10 @@ pub mod errors {
                 description("Unsupported predict method")
                 display("That model does not support: '{}'.{}", m, d)
             }
+            UnavailableDataIndex(m: String) {
+                description("Unavailable data")
+                display("Index out of range: '{}'", m)
+            }
         }
     }
 }
@@ -46,13 +50,13 @@ fn load_model(model_path: &str) -> PyResult<wrapper::PredictorWrapper> {
         Err(error) => match error.kind() {
             io::ErrorKind::NotFound => {
                 return Err(PyErr::new::<exceptions::PyFileNotFoundError, _>(format!(
-                    "File not found: {}.",
+                    "File not found: {}",
                     model_path
                 )))
             }
             _ => {
                 return Err(PyErr::new::<exceptions::PyOSError, _>(format!(
-                    "Unexpected error, when open file: {}.",
+                    "Unexpected error, when open file: {}",
                     error
                 )))
             }
@@ -68,7 +72,7 @@ fn load_model(model_path: &str) -> PyResult<wrapper::PredictorWrapper> {
                 Err(PyErr::new::<exceptions::PyValueError, _>(message.clone()))
             }
             _ => Err(PyErr::new::<exceptions::PyValueError, _>(format!(
-                "Unexpected error, when initializing model: {}.",
+                "Unexpected error, when initializing model: {}",
                 error
             ))),
         },

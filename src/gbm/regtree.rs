@@ -112,9 +112,9 @@ impl Node {
         });
     }
 
-    fn next(&self, feat: ArrayView1<f32>) -> Option<usize> {
+    fn next(&self, feat: ArrayView1<f32>) -> Result<Option<usize>> {
         return match self.leaf_or_split {
-            LeafOrSplit::LeafValue(_) => None,
+            LeafOrSplit::LeafValue(_) => Ok(None),
             LeafOrSplit::Split {
                 cleft,
                 cright,
@@ -122,15 +122,17 @@ impl Node {
                 default_next,
                 split_index,
             } => match feat.get(split_index as usize) {
-                None => return Some(default_next as usize),
+                None => Err(Error::from_kind(ErrorKind::UnavailableDataIndex(format!(
+                    "cannot get feature value byindex: {}",
+                    split_index
+                )))),
                 Some(fvalue) => {
-                    if *fvalue == 0f32 {
-                        return Some(default_next as usize);
-                    }
-                    if *fvalue < split_cond {
-                        Some(cleft as usize)
+                    if fvalue.is_nan() {
+                        Ok(Some(default_next as usize))
+                    } else if *fvalue < split_cond {
+                        Ok(Some(cleft as usize))
                     } else {
-                        Some(cright as usize)
+                        Ok(Some(cright as usize))
                     }
                 }
             },
@@ -184,12 +186,12 @@ impl RegTree {
         });
     }
 
-    pub fn get_leaf_index(&self, feat: ArrayView1<f32>, root_id: usize) -> usize {
+    pub fn get_leaf_index(&self, feat: ArrayView1<f32>, root_id: usize) -> Result<usize> {
         let mut pid = root_id;
         let mut node = self.nodes[pid];
         loop {
-            match node.next(feat) {
-                None => return pid,
+            match node.next(feat)? {
+                None => return Ok(pid),
                 Some(new_pid) => {
                     pid = new_pid;
                     node = self.nodes[pid];
@@ -198,10 +200,10 @@ impl RegTree {
         }
     }
 
-    pub fn get_leaf_value(&self, feat: ArrayView1<f32>, root_id: usize) -> f32 {
-        let leaf_node = self.nodes[self.get_leaf_index(feat, root_id)];
+    pub fn get_leaf_value(&self, feat: ArrayView1<f32>, root_id: usize) -> Result<f32> {
+        let leaf_node = self.nodes[self.get_leaf_index(feat, root_id)?];
         return match leaf_node.leaf_or_split {
-            LeafOrSplit::LeafValue(leaf_value) => leaf_value,
+            LeafOrSplit::LeafValue(leaf_value) => Ok(leaf_value),
             LeafOrSplit::Split { .. } => {
                 panic!("Broken tree - is not leaf node")
             }
