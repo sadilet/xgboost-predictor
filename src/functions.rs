@@ -12,25 +12,25 @@ pub enum FunctionType {
 /// interface of objective function
 pub struct ObjFunction {
     pub vector: fn(&Vec<f32>) -> Vec<f32>,
-    pub scalar: fn(f32) -> f32,
+    pub scalar: fn(f32) -> Result<f32>,
 }
 
 #[inline]
-fn sigmoid(x: f32) -> f32 {
-    1f32 / (1f32 + (-x).exp())
+fn sigmoid(x: f32) -> Result<f32> {
+    Ok(1f32 / (1f32 + (-x).exp()))
 }
 
 fn dump_vec(preds: &Vec<f32>) -> Vec<f32> {
     return preds.clone();
 }
 
-fn dump(pred: f32) -> f32 {
-    return pred;
+fn dump(pred: f32) -> Result<f32> {
+    Ok(pred)
 }
 
 /// Logistic regression.
 fn logistic_vec(preds: &Vec<f32>) -> Vec<f32> {
-    return preds.into_iter().map(|x| sigmoid(*x)).collect();
+    return preds.into_iter().map(|x| sigmoid(*x).unwrap()).collect();
 }
 
 /// Multiclass classification.
@@ -52,8 +52,10 @@ fn multiclass_vec(preds: &Vec<f32>) -> Vec<f32> {
     }
 }
 
-fn unimplemented(_pred: f32) -> f32 {
-    std::unimplemented!();
+fn unimplemented(_pred: f32) -> Result<f32> {
+    Err(Error::from_kind(ErrorKind::UnimplementedFunc(
+        String::from("Unimplemented output margin for scalar"),
+    )))
 }
 
 ///  Multiclass classification (predicted probability).

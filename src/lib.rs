@@ -22,11 +22,19 @@ pub mod errors {
             }
             UnsupportedPredictionMethod(m: String, d: String) {
                 description("Unsupported predict method")
-                display("That model does not support: '{}'.{}", m, d)
+                display("That model does not support: '{}' method.{}", m, d)
             }
             UnavailableDataIndex(m: String) {
                 description("Unavailable data")
                 display("Index out of range: '{}'", m)
+            }
+            UnimplementedFunc(m: String) {
+                description("Unimplemented function")
+                display("{}", m)
+            }
+            BrokenModel(m: String) {
+                description("Broken model")
+                display("Broken model. {}", m)
             }
         }
     }

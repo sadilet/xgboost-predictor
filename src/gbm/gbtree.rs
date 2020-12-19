@@ -151,7 +151,7 @@ impl GBTree {
         } else {
             cmp::min(ntree_limit, trees.len())
         };
-        let pred = 0f32;
+        let mut pred = 0f32;
         for i in 0..treeleft {
             pred += weight_drop[i] * trees[i].get_leaf_value(feat, root_index)?
         }
@@ -171,7 +171,7 @@ impl GBTree {
         } else {
             cmp::min(ntree_limit, trees.len())
         };
-        let pred = 0f32;
+        let mut pred = 0f32;
         for i in 0..treeleft {
             pred += trees[i].get_leaf_value(feat, root_index)?
         }
@@ -208,8 +208,8 @@ impl GBTree {
             cmp::min(ntree_limit, trees.len())
         };
         let mut preds: Vec<f32> = vec![];
-        for feat in 0..feats.rows() {
-            let pred = 0f32;
+        for feat in 0..feats.nrows() {
+            let mut pred = 0f32;
             for i in 0..treeleft {
                 pred += weight_drop[i] * trees[i].get_leaf_value(feats.row(feat), root_index)?
             }
@@ -232,8 +232,8 @@ impl GBTree {
             cmp::min(ntree_limit, trees.len())
         };
         let mut preds: Vec<f32> = vec![];
-        for feat in 0..feats.rows() {
-            let pred = 0f32;
+        for feat in 0..feats.nrows() {
+            let mut pred = 0f32;
             for i in 0..treeleft {
                 pred += trees[i].get_leaf_value(feats.row(feat), root_index)?
             }
@@ -263,7 +263,7 @@ impl GBTree {
 
 impl GradBooster for GBTree {
     fn predict(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>> {
-        let data: Vec<f32> = vec![];
+        let mut data: Vec<f32> = vec![];
         for gid in 0..self.mparam.num_output_group {
             data.push(self.pred(feat, gid, 0, ntree_limit)?)
         }
@@ -275,7 +275,7 @@ impl GradBooster for GBTree {
             return Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
                 String::from("predict_single"),
                 format!(
-                    " Detail: output group must be equal to 1, current value {}",
+                    "Detail: output group must be equal to 1, current value {}",
                     self.mparam.num_output_group
                 ),
             )));
@@ -292,6 +292,6 @@ impl GradBooster for GBTree {
         for gid in 0..self.mparam.num_output_group {
             data.push(self.pred_many(feats, gid as usize, 0, ntree_limit)?)
         }
-        Ok(data)
+        Ok(izip!(data).collect())
     }
 }

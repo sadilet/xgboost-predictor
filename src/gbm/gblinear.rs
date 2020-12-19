@@ -77,7 +77,7 @@ impl GBLinear {
     fn pred_many(&self, feats: ArrayView2<'_, f32>, gid: usize) -> Result<Vec<f32>> {
         let bias = self.bias(gid) as f32;
         let mut result = vec![];
-        for feat_row in 0..feats.len() {
+        for feat_row in 0..feats.nrows() {
             let mut psum = bias;
             for fid in 0..self.mparam.num_feature {
                 match feats.get((feat_row, fid)) {
@@ -102,7 +102,7 @@ impl GBLinear {
 
 impl GradBooster for GBLinear {
     fn predict(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>> {
-        let data: Vec<f32> = vec![];
+        let mut data: Vec<f32> = vec![];
         for gid in 0..self.mparam.num_output_group {
             data.push(self.pred(feat, gid)?)
         }
@@ -114,7 +114,7 @@ impl GradBooster for GBLinear {
             return Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
                 String::from("predict_single"),
                 format!(
-                    " Detail: output group must be equal to 1, current value {}",
+                    "Detail: output group must be equal to 1, current value {}",
                     self.mparam.num_output_group
                 ),
             )));
@@ -125,7 +125,7 @@ impl GradBooster for GBLinear {
     fn predict_leaf(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<usize>> {
         Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
             String::from("predict_leaf"),
-            format!(" Detail: gblinear model does not support predict leaf index",),
+            format!("Detail: gblinear model does not support predict leaf index",),
         )))
     }
 
@@ -138,6 +138,6 @@ impl GradBooster for GBLinear {
         for gid in 0..self.mparam.num_output_group {
             data.push(self.pred_many(feats, gid)?)
         }
-        Ok(izip!(data))
+        Ok(izip!(data).collect())
     }
 }

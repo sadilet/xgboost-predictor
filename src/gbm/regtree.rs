@@ -123,7 +123,7 @@ impl Node {
                 split_index,
             } => match feat.get(split_index as usize) {
                 None => Err(Error::from_kind(ErrorKind::UnavailableDataIndex(format!(
-                    "cannot get feature value byindex: {}",
+                    "cannot get feature value by index: {}",
                     split_index
                 )))),
                 Some(fvalue) => {
@@ -205,7 +205,7 @@ impl RegTree {
         return match leaf_node.leaf_or_split {
             LeafOrSplit::LeafValue(leaf_value) => Ok(leaf_value),
             LeafOrSplit::Split { .. } => {
-                panic!("Broken tree - is not leaf node")
+                Err(Error::from_kind(ErrorKind::BrokenModel(String::from("Detail: broken tree - is not leaf node"))))
             }
         };
     }
