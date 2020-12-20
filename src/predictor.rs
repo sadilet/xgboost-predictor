@@ -151,7 +151,7 @@ impl Predictor {
 
     fn predict_many_raw(
         &self,
-        feats: ArrayView2<'_, f32>,
+        feats: &[f32],
         ntree_limit: usize,
     ) -> Result<Vec<Vec<f32>>> {
         let mut preds = self.gbm.predict_many(feats, ntree_limit)?;
@@ -166,7 +166,7 @@ impl Predictor {
     /// Generates a prediction for given vectors of features
     pub fn predict_many(
         &self,
-        feats: ArrayView2<'_, f32>,
+        feats: &[f32],
         output_margin: bool,
         ntree_limit: usize,
     ) -> Result<Vec<Vec<f32>>> {

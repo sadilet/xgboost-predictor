@@ -287,11 +287,12 @@ impl GradBooster for GBTree {
         self.pred_path(feat, 0, ntree_limit)
     }
 
-    fn predict_many(&self, feats: ArrayView2<f32>, ntree_limit: usize) -> Result<Vec<Vec<f32>>> {
-        let mut data: Vec<Vec<f32>> = vec![];
-        for gid in 0..self.mparam.num_output_group {
-            data.push(self.pred_many(feats, gid as usize, 0, ntree_limit)?)
-        }
-        Ok(izip!(data).collect())
+    fn predict_many(&self, feats: &[f32], ntree_limit: usize) -> Result<Vec<Vec<f32>>> {
+        // let mut data: Vec<Vec<f32>> = vec![];
+        // for gid in 0..self.mparam.num_output_group {
+        //     data.push(self.pred_many(feats, gid as usize, 0, ntree_limit)?)
+        // }
+        // Ok(izip!(data).collect())
+        Ok(vec![vec![]])
     }
 }

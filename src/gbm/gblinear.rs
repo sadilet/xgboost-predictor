@@ -1,6 +1,8 @@
 use itertools::izip;
 use ndarray::{ArrayView1, ArrayView2};
 
+use std::time::{Duration, Instant};
+
 use crate::errors::*;
 use crate::gbm::grad_booster::GradBooster;
 use crate::model_reader::ModelReader;
@@ -74,29 +76,34 @@ impl GBLinear {
         Ok(psum)
     }
 
-    fn pred_many(&self, feats: ArrayView2<'_, f32>, gid: usize) -> Result<Vec<f32>> {
+    fn pred_many(&self, feats: &[f32], gid: usize) -> Vec<f32> {
         let bias = self.bias(gid) as f32;
         let mut result = vec![];
-        for feat_row in 0..feats.nrows() {
+        let now = Instant::now();
+        for feat_row in 0..(feats.len() / 126) {
             let mut psum = bias;
             for fid in 0..self.mparam.num_feature {
-                match feats.get((feat_row, fid)) {
-                    None => {
-                        return Err(Error::from_kind(ErrorKind::UnavailableDataIndex(format!(
-                            "cannot get feature value by index ({} {})",
-                            feat_row, fid
-                        ))))
-                    }
-                    Some(fvalue) => {
-                        if !fvalue.is_nan() {
-                            psum += *fvalue * self.weight(fid, gid);
-                        }
-                    }
-                }
+                let fvalue = feats[((feat_row * 125) + feat_row) + fid];
+                psum += fvalue * self.weight(fid, gid);
+                
+                // {
+                //     None => {
+                //         return Err(Error::from_kind(ErrorKind::UnavailableDataIndex(format!(
+                //             "cannot get feature value by index ({} {})",
+                //             feat_row, fid
+                //         ))))
+                //     }
+                //     Some(fvalue) => {
+                //         if !fvalue.is_nan() {
+                //             psum += *fvalue * self.weight(fid, gid);
+                //         }
+                //     }
+                // }
             }
             result.push(psum)
         }
-        Ok(result)
+        println!("{:?}", now.elapsed());
+        result
     }
 }
 
@@ -131,13 +138,11 @@ impl GradBooster for GBLinear {
 
     fn predict_many(
         &self,
-        feats: ArrayView2<'_, f32>,
+        feats: &[f32],
         ntree_limit: usize,
     ) -> Result<Vec<Vec<f32>>> {
-        let mut data: Vec<Vec<f32>> = vec![];
-        for gid in 0..self.mparam.num_output_group {
-            data.push(self.pred_many(feats, gid)?)
-        }
-        Ok(izip!(data).collect())
+        Ok((0..self.mparam.num_output_group)
+            .map(|gid| self.pred_many(feats, gid))
+            .collect())
     }
 }
