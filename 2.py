@@ -15,7 +15,7 @@ if __name__ == "__main__":
                 f, v = i.split(":")
                 row[int(f)] = int(v)
             data.append(tuple(row))
-
+    data = tuple(data)
 
     booster1 = xgboost.Booster({"nthread": 1})
     booster1.load_model('tests/resources/model/gblinear/v40/binary-logistic.model')
@@ -31,9 +31,9 @@ if __name__ == "__main__":
     b = booster2.predict_many(data2)
     print((datetime.datetime.now() - start))
 
-    # print(a)
-    # print(b)
-    # print(a, b)
+    print(a)
+    print(b[:10])
+    print(len(b))
 
 
 """

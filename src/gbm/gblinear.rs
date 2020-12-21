@@ -1,8 +1,10 @@
-use itertools::izip;
-use ndarray::{ArrayView1, ArrayView2};
+use std::iter::FromIterator;
+
+use ndarray::{ArrayView1, ArrayView2, Array, Ix1};
 
 use std::time::{Duration, Instant};
 
+use itertools::izip;
 use crate::errors::*;
 use crate::gbm::grad_booster::GradBooster;
 use crate::model_reader::ModelReader;
@@ -56,93 +58,54 @@ impl GBLinear {
         self.weights[(fid * self.mparam.num_output_group) + gid]
     }
 
-    fn pred(&self, feat: ArrayView1<'_, f32>, gid: usize) -> Result<f32> {
-        let mut psum = self.bias(gid) as f32;
-        for fid in 0..self.mparam.num_feature {
-            match feat.get(fid) {
-                None => {
-                    return Err(Error::from_kind(ErrorKind::UnavailableDataIndex(format!(
-                        "cannot get feature value byindex: {}",
-                        fid
-                    ))))
-                }
-                Some(feat_value) => {
-                    if *feat_value != 0f32 {
-                        psum += feat_value * self.weight(fid, gid);
-                    }
-                }
-            }
-        }
-        Ok(psum)
+    fn group_weights(&self, gid: usize) -> Array<f32, Ix1> {
+        <Array<f32, Ix1> as FromIterator<f32>>::from_iter((0..self.mparam.num_feature).map(|fid| self.weight(fid, gid)))
     }
 
-    fn pred_many(&self, feats: &[f32], gid: usize) -> Vec<f32> {
-        let bias = self.bias(gid) as f32;
-        let mut result = vec![];
-        let now = Instant::now();
-        for feat_row in 0..(feats.len() / 126) {
-            let mut psum = bias;
-            for fid in 0..self.mparam.num_feature {
-                let fvalue = feats[((feat_row * 125) + feat_row) + fid];
-                psum += fvalue * self.weight(fid, gid);
-                
-                // {
-                //     None => {
-                //         return Err(Error::from_kind(ErrorKind::UnavailableDataIndex(format!(
-                //             "cannot get feature value by index ({} {})",
-                //             feat_row, fid
-                //         ))))
-                //     }
-                //     Some(fvalue) => {
-                //         if !fvalue.is_nan() {
-                //             psum += *fvalue * self.weight(fid, gid);
-                //         }
-                //     }
-                // }
-            }
-            result.push(psum)
-        }
-        println!("{:?}", now.elapsed());
-        result
+    fn pred(&self, feat: ArrayView1<'_, f32>, gid: usize) -> f32 {
+        feat.dot(&self.group_weights(gid)) + self.bias(gid as usize)
+    }
+
+    fn pred_many(&self, feats: ArrayView2<'_, f32>, base_score: f32,  gid: usize) -> Vec<f32> {
+        (feats.dot(&self.group_weights(gid)) + self.bias(gid as usize) + base_score).to_vec()
     }
 }
 
 impl GradBooster for GBLinear {
-    fn predict(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>> {
-        let mut data: Vec<f32> = vec![];
-        for gid in 0..self.mparam.num_output_group {
-            data.push(self.pred(feat, gid)?)
-        }
-        Ok(data)
-    }
+    // fn predict(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>> {
+    //     let mut data: Vec<f32> = vec![];
+    //     for gid in 0..self.mparam.num_output_group {
+    //         data.push(self.pred(feat, gid)?)
+    //     }
+    //     Ok(data)
+    // }
 
-    fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32> {
-        if self.mparam.num_output_group != 1 {
-            return Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
-                String::from("predict_single"),
-                format!(
-                    "Detail: output group must be equal to 1, current value {}",
-                    self.mparam.num_output_group
-                ),
-            )));
-        }
-        self.pred(feat, 0)
-    }
+    // fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32> {
+    //     if self.mparam.num_output_group != 1 {
+    //         return Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
+    //             String::from("predict_single"),
+    //             format!(
+    //                 "Detail: output group must be equal to 1, current value {}",
+    //                 self.mparam.num_output_group
+    //             ),
+    //         )));
+    //     }
+    //     self.pred(feat, 0)
+    // }
 
-    fn predict_leaf(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<usize>> {
-        Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
-            String::from("predict_leaf"),
-            format!("Detail: gblinear model does not support predict leaf index",),
-        )))
-    }
+    // fn predict_leaf(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<usize>> {
+    //     Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
+    //         String::from("predict_leaf"),
+    //         format!("Detail: gblinear model does not support predict leaf index",),
+    //     )))
+    // }
 
     fn predict_many(
         &self,
-        feats: &[f32],
+        feats: ArrayView2<'_, f32>,
+        base_score: f32, 
         ntree_limit: usize,
     ) -> Result<Vec<Vec<f32>>> {
-        Ok((0..self.mparam.num_output_group)
-            .map(|gid| self.pred_many(feats, gid))
-            .collect())
+        Ok(izip!((0..self.mparam.num_output_group).map(|gid| self.pred_many(feats, base_score, gid))).collect())
     }
 }

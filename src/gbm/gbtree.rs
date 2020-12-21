@@ -262,32 +262,32 @@ impl GBTree {
 }
 
 impl GradBooster for GBTree {
-    fn predict(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>> {
-        let mut data: Vec<f32> = vec![];
-        for gid in 0..self.mparam.num_output_group {
-            data.push(self.pred(feat, gid, 0, ntree_limit)?)
-        }
-        Ok(data)
-    }
+    // fn predict(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>> {
+    //     let mut data: Vec<f32> = vec![];
+    //     for gid in 0..self.mparam.num_output_group {
+    //         data.push(self.pred(feat, gid, 0, ntree_limit)?)
+    //     }
+    //     Ok(data)
+    // }
 
-    fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32> {
-        if self.mparam.num_output_group != 1 {
-            return Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
-                String::from("predict_single"),
-                format!(
-                    "Detail: output group must be equal to 1, current value {}",
-                    self.mparam.num_output_group
-                ),
-            )));
-        }
-        self.pred(feat, 0, 0, ntree_limit)
-    }
+    // fn predict_single(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32> {
+    //     if self.mparam.num_output_group != 1 {
+    //         return Err(Error::from_kind(ErrorKind::UnsupportedPredictionMethod(
+    //             String::from("predict_single"),
+    //             format!(
+    //                 "Detail: output group must be equal to 1, current value {}",
+    //                 self.mparam.num_output_group
+    //             ),
+    //         )));
+    //     }
+    //     self.pred(feat, 0, 0, ntree_limit)
+    // }
 
-    fn predict_leaf(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<usize>> {
-        self.pred_path(feat, 0, ntree_limit)
-    }
+    // fn predict_leaf(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<usize>> {
+    //     self.pred_path(feat, 0, ntree_limit)
+    // }
 
-    fn predict_many(&self, feats: &[f32], ntree_limit: usize) -> Result<Vec<Vec<f32>>> {
+    fn predict_many(&self, feats: ArrayView2<'_, f32>, base_score: f32, ntree_limit: usize) -> Result<Vec<Vec<f32>>> {
         // let mut data: Vec<Vec<f32>> = vec![];
         // for gid in 0..self.mparam.num_output_group {
         //     data.push(self.pred_many(feats, gid as usize, 0, ntree_limit)?)

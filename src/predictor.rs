@@ -97,80 +97,66 @@ impl Predictor {
         self.mparam.num_feature()
     }
 
-    fn predict_raw(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>> {
-        let mut preds = self.gbm.predict(feat, ntree_limit)?;
-        for i in 0..preds.len() {
-            preds[i] += self.mparam.base_score as f32;
-        }
-        Ok(preds)
-    }
+    // fn predict_raw(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<Vec<f32>> {
+    //     let mut preds = self.gbm.predict(feat, ntree_limit)?;
+    //     for i in 0..preds.len() {
+    //         preds[i] += self.mparam.base_score as f32;
+    //     }
+    //     Ok(preds)
+    // }
 
-    /// Generates predictions for given feature vector
-    pub fn predict(
-        &self,
-        feat: ArrayView1<'_, f32>,
-        output_margin: bool,
-        ntree_limit: usize,
-    ) -> Result<Vec<f32>> {
-        let preds = self.predict_raw(feat, ntree_limit)?;
+    // /// Generates predictions for given feature vector
+    // pub fn predict(
+    //     &self,
+    //     feat: ArrayView1<'_, f32>,
+    //     output_margin: bool,
+    //     ntree_limit: usize,
+    // ) -> Result<Vec<f32>> {
+    //     let preds = self.predict_raw(feat, ntree_limit)?;
 
-        return if !output_margin {
-            Ok((self.obj_func.vector)(&preds))
-        } else {
-            Ok(preds)
-        };
-    }
+    //     return if !output_margin {
+    //         Ok((self.obj_func.vector)(&preds))
+    //     } else {
+    //         Ok(preds)
+    //     };
+    // }
 
-    fn predict_single_raw(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32> {
-        Ok(self.gbm.predict_single(feat, ntree_limit)? + self.mparam.base_score as f32)
-    }
+    // fn predict_single_raw(&self, feat: ArrayView1<'_, f32>, ntree_limit: usize) -> Result<f32> {
+    //     Ok(self.gbm.predict_single(feat, ntree_limit)? + self.mparam.base_score as f32)
+    // }
 
-    /// Generates a prediction for given feature vector
-    pub fn predict_single(
-        &self,
-        feat: ArrayView1<'_, f32>,
-        output_margin: bool,
-        ntree_limit: usize,
-    ) -> Result<f32> {
-        let pred = self.predict_single_raw(feat, ntree_limit)?;
-        return if !output_margin {
-            (self.obj_func.scalar)(pred)
-        } else {
-            Ok(pred)
-        };
-    }
+    // /// Generates a prediction for given feature vector
+    // pub fn predict_single(
+    //     &self,
+    //     feat: ArrayView1<'_, f32>,
+    //     output_margin: bool,
+    //     ntree_limit: usize,
+    // ) -> Result<f32> {
+    //     let pred = self.predict_single_raw(feat, ntree_limit)?;
+    //     return if !output_margin {
+    //         (self.obj_func.scalar)(pred)
+    //     } else {
+    //         Ok(pred)
+    //     };
+    // }
 
-    /// Predicts leaf index of each tree.
-    pub fn predict_leaf(
-        &self,
-        feat: ArrayView1<'_, f32>,
-        ntree_limit: usize,
-    ) -> Result<Vec<usize>> {
-        self.gbm.predict_leaf(feat, ntree_limit)
-    }
-
-    fn predict_many_raw(
-        &self,
-        feats: &[f32],
-        ntree_limit: usize,
-    ) -> Result<Vec<Vec<f32>>> {
-        let mut preds = self.gbm.predict_many(feats, ntree_limit)?;
-        for rid in 0..preds.len() {
-            for pid in 0..preds[rid].len() {
-                preds[rid][pid] += self.mparam.base_score as f32;
-            }
-        }
-        Ok(preds)
-    }
+    // /// Predicts leaf index of each tree.
+    // pub fn predict_leaf(
+    //     &self,
+    //     feat: ArrayView1<'_, f32>,
+    //     ntree_limit: usize,
+    // ) -> Result<Vec<usize>> {
+    //     self.gbm.predict_leaf(feat, ntree_limit)
+    // }
 
     /// Generates a prediction for given vectors of features
     pub fn predict_many(
         &self,
-        feats: &[f32],
+        feats: ArrayView2<'_, f32>,
         output_margin: bool,
         ntree_limit: usize,
     ) -> Result<Vec<Vec<f32>>> {
-        let preds = self.predict_many_raw(feats, ntree_limit)?;
+        let preds = self.gbm.predict_many(feats, self.mparam.base_score as f32,  ntree_limit)?;
 
         if !output_margin {
             Ok(preds
